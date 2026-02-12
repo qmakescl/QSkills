@@ -22,8 +22,17 @@ Thumbs.db
 # Gemini
 .gemini/
 
+# Anthropic
+.claude/
+
 # Reports & outputs (generated files)
 *.html
 charts/
 report/
 *-stats.json
+
+
+# 검증 등으로 사용하는 skills
+.agents/
+.agent/
+
