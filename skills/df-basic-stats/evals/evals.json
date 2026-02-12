@@ -1,0 +1,42 @@
+{
+  "skill_name": "df-basic-stats",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "이 CSV 파일의 기초 통계를 알려줘",
+      "expected_output": "각 열의 타입 추론 + 응답수/결측수 + 타입별 통계가 JSON 형태로 산출됨",
+      "files": ["evals/files/sample_mixed.csv"],
+      "assertions": [
+        "연속형 열에 mean, std, median, min, max가 모두 포함되어 있다",
+        "정수형 열에 mean, std, median, min, max, mode가 모두 포함되어 있다",
+        "범주형 열에 unique_count, mode, top5_values가 포함되어 있다",
+        "날짜형 열에 min, max, mode가 포함되어 있다",
+        "모든 열에 valid_count, missing_count, missing_rate가 포함되어 있다",
+        "결측이 있는 열의 missing_count가 0보다 크다"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "이 데이터 분석해줘. 결측값이 얼마나 있는지, 각 변수의 분포가 어떤지 알고 싶어",
+      "expected_output": "기초 통계 + ydata-profiling HTML 리포트가 함께 생성됨",
+      "files": ["evals/files/sample_mixed.csv"],
+      "assertions": [
+        "profile_report 필드가 null이 아닌 유효한 파일 경로다",
+        "HTML 리포트 파일이 실제로 생성되어 있다",
+        "결측 현황이 열별로 정확히 보고된다"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "빈 엑셀 파일인데 통계 구해줘",
+      "expected_output": "빈 데이터프레임 경고 + 빈 columns 배열 반환",
+      "files": ["evals/files/empty.csv"],
+      "assertions": [
+        "dataframe_shape.rows가 0이다",
+        "columns 배열이 비어있다",
+        "_warning 필드에 경고 메시지가 존재한다",
+        "에러 없이 정상 종료된다"
+      ]
+    }
+  ]
+}
