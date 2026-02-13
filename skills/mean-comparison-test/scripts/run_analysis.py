@@ -732,7 +732,13 @@ def plot_dist(data, dv, iv, output_path):
 def generate_report(result, output_dir, chart_filename, alpha=0.05):
     """마크다운 보고서 생성 및 저장"""
     today = datetime.datetime.now().strftime("%Y%m%d")
-    report_filename = f"{today}-result.md"
+    test_method_map = {
+        'independent': 'independent-ttest',
+        'paired': 'paired-ttest',
+        'anova': 'oneway-anova'
+    }
+    method_name = test_method_map.get(result.get('test_type', ''), result.get('test_type', 'analysis'))
+    report_filename = f"{today}-{method_name}-result.md"
     report_path = os.path.join(output_dir, 'report', report_filename)
     
     os.makedirs(os.path.join(output_dir, 'report'), exist_ok=True)
