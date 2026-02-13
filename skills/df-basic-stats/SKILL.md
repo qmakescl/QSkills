@@ -9,8 +9,11 @@ description: >
   별 맞춤 통계 산출, ydata-profiling 리포트 생성을 모두 포함한다.
   사용자가 "데이터 좀 봐줘", "이 파일 분석해줘" 같은 모호한 요청을 할 때도
   첫 단계로 이 스킬을 트리거하는 것이 좋다.
+author: yoonani(from CultureLab, aka Q)
+version: 2026-02-12
+source: https://github.com/qmakescl/QSkills
 ---
-
+ 
 # DataFrame 기초 통계 분석 스킬
 
 ## 개요
