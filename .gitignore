@@ -36,3 +36,6 @@ report/
 .agents/
 .agent/
 
+
+# 코드 검정을 위한 폴더 제외
+results/

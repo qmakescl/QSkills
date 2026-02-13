@@ -1,0 +1,63 @@
+{
+    "skill_name": "mean-comparison-test",
+    "evals": [
+        {
+            "id": 1,
+            "prompt": "이 두 집단의 시험점수 평균을 비교해줘 (독립표본 t-test)",
+            "expected_output": "정규성 검정 결과와 t-test 통계량, 차트가 포함된 JSON 및 리포트가 생성됨",
+            "files": [
+                "evals/files/sample_independent.csv"
+            ],
+            "assertions": [
+                "normality_test 필드가 존재하고 정규성 검정 결과가 포함되어 있다",
+                "test_result.statistic (t-value)가 숫자형으로 존재한다",
+                "levene_test 결과가 포함되어 있다",
+                "chart_path가 존재하고 파일이 생성되어 있다",
+                "output_dir/report/YYYYMMDD-result.md 파일이 생성되어 있다 (날짜 부분은 가변)",
+                "test_result.diff_ci_lower, diff_ci_upper 필드가 존재한다"
+            ]
+        },
+        {
+            "id": 2,
+            "prompt": "학생들의 사전/사후 점수 차이가 있는지 분석해줘 (대응표본)",
+            "expected_output": "대응표본 t-test 결과와 Paired 차트가 생성됨",
+            "files": [
+                "evals/files/sample_paired_wide.csv"
+            ],
+            "assertions": [
+                "test_result.test_name이 'Paired t-test'이다",
+                "normality_test가 차이값(Difference)에 대해 수행되었다",
+                "descriptives 배열에 사전/사후 두 그룹의 통계가 있다",
+                "test_result.cohens_d가 포함되어 있다",
+                "test_result.diff_ci_lower가 포함되어 있다"
+            ]
+        },
+        {
+            "id": 3,
+            "prompt": "세 가지 운동 프로그램의 체중 감량 효과 차이를 비교해줘 (ANOVA)",
+            "expected_output": "ANOVA 결과와 사후검정 결과가 포함됨",
+            "files": [
+                "evals/files/sample_anova.csv"
+            ],
+            "assertions": [
+                "test_result.test_name이 'One-way ANOVA'이다",
+                "posthoc 필드에 tukey 결과가 포함되어 있다",
+                "levene_test 결과가 포함되어 있다",
+                "test_result.eta_squared가 포함되어 있다"
+            ]
+        },
+        {
+            "id": 4,
+            "prompt": "Long format 대응표본 데이터로 사전/사후 차이를 분석해줘",
+            "expected_output": "Paired t-test 결과가 Long format 데이터에서 정상 생성됨",
+            "files": [
+                "evals/files/sample_paired_long.csv"
+            ],
+            "assertions": [
+                "test_result.test_name이 'Paired t-test'이다",
+                "normality_test가 차이값(Difference)에 대해 수행되었다",
+                "test_result.diff_ci_lower가 포함되어 있다"
+            ]
+        }
+    ]
+}
