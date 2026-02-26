@@ -1,6 +1,6 @@
 # QSkills
 
-AI Agent Skills Collection — 에이전트가 활용할 수 있는 스킬 모음 저장소입니다.
+AI Agent Skills Collection — Q가 AI Agent의 도움을 받아 만들고 있는 Agent Skills 입니다.
 
 ## 프로젝트 구조
 
