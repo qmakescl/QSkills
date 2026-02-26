@@ -1,0 +1,9 @@
+{
+  "name": "paper-eval-report",
+  "version": "0.1.0",
+  "description": "논문 PDF를 받아 국제 보고 지침(PRISMA·CONSORT·STROBE 등)으로 자동 평가하고 학술 양식 Word 보고서(.docx)로 출력합니다.",
+  "author": {
+    "name": "Q"
+  },
+  "keywords": ["paper", "evaluation", "systematic-review", "PRISMA", "CONSORT", "GRADE", "docx", "academic"]
+}
