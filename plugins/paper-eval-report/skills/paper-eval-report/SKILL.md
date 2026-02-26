@@ -17,7 +17,7 @@ version: 0.1.0
 
 ## 필요 패키지
 
-플러그인 루트 경로(`plugins/skills/paper-eval-report/references`)에서:
+플러그인 루트 경로(`plugins/paper-eval-report/references`)에서:
 
 ```bash
 npm install docx
@@ -142,5 +142,5 @@ SR/메타분석: 추가로 `GRADE.md` 로딩.
 
 - PDF 추출 실패: OCR 필요 여부 안내 후 pytesseract 시도
 - 연구 설계 불명확: GUIDELINE_SELECTOR.md 섹션 6 프롬프트로 사용자 확인
-- docx 라이브러리 오류: `npm install -g docx` 재실행 후 재시도
+- docx 라이브러리 오류: `npm install docx` 재실행 후 재시도
 - Node.js 미설치: `apt-get install nodejs -y` 안내

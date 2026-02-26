@@ -17,8 +17,15 @@ QSkills/
 │   │   ├── scripts/
 │   │   ├── references/
 │   │   └── evals/
-│   └── paper-evaluator/       # 논문 평가 스킬
-│       ├── SKILL.md
+│   ├── paper-evaluator/       # 논문 평가 스킬 (마크다운)
+│   │   ├── SKILL.md
+│   │   └── references/
+├── plugins/                   # 플러그인 모음
+│   └── paper-eval-report/     # 논문 평가 및 Word 보고서 생성 플러그인
+│       ├── README.md
+│       ├── plugin.json
+│       ├── commands/
+│       ├── skills/
 │       └── references/
 ├── datasets/                  # 분석용 샘플 데이터
 ├── pyproject.toml             # 프로젝트 설정 및 의존성
@@ -32,7 +39,13 @@ QSkills/
 |------|------|
 | `df-basic-stats` | DataFrame 기초 통계 자동 산출 (타입 추론, 기술통계, ydata-profiling) |
 | `mean-comparison-test` | 평균비교 검정 (독립표본 t-test, 대응표본 t-test, ANOVA 및 사후검정) |
-| `paper-evaluator` | 논문 연구 설계 자동 식별 및 국제 보고/질 평가 지침 기반 평가, GRADE 등급화 |
+| `paper-evaluator` | 논문 연구 설계 자동 식별 및 국제 보고/질 평가 지침 기반 평가, GRADE 등급화 (Markdown 보고서) |
+
+## 플러그인 목록
+
+| 플러그인 | 설명 |
+|----------|------|
+| `paper-eval-report` | 논문 연구 설계 식별 및 각종 지침 기반 평가 산출물을 학술 양식 Word 문서(.docx)로 자동 변환 생성 |
 
 ## 스킬 설치
 
@@ -104,6 +117,33 @@ npx skills add qmakescl/QSkills/skills --skill paper-evaluator
 #### 자동 생성 결과물
 
 - 마크다운 보고서 (연구 설계 식별, 항목별 상세 준수 판정, GRADE 등급화, 결론)
+
+---
+
+## 플러그인 사용법
+
+플러그인은 복합 워크플로우나 학술 문서 생성처럼 확장된 기능을 제공하며, 명확하고 빠른 실행을 위한 슬래시 커맨드(`/`)를 활용할 수 있습니다.
+
+### paper-eval-report
+
+**논문 평가 및 표 양식 Word 자동 생성** — `paper-evaluator` 스킬의 강력한 분석 결과를 학술 연구자 친화적인 Microsoft Word(.docx) 형식의 표와 체크리스트로 렌더링.
+
+#### 커맨드 사용
+
+이 플러그인은 커맨드 기반의 실행을 지원합니다.
+
+- **개별 논문 평가**: `/evaluate-paper [논문 PDF 명]`
+- **평가 결과 대시보드 생성**: `/paper-dashboard`
+
+#### 자연어 요청 예시
+>
+> "이 논문 읽고 평가해서 양식에 맞춘 docx 보고서로 출력해줘"
+> "기존에 만들었던 평가 보고서들 다 모아서 논문 요약 대시보드 Word 파일 하나 만들어줘"
+
+#### 자동 생성 결과물
+
+- 학술 표준 포맷 `.docx` 파일 (최종 평가 리포트 / 논문 요약 대시보드)
+- 평가 결과 데이터 (JSON 포맷, 진행과정 기록용)
 
 ---
 
