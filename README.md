@@ -104,3 +104,7 @@ npx skills add qmakescl/QSkills/skills --skill paper-evaluator
 #### 자동 생성 결과물
 
 - 마크다운 보고서 (연구 설계 식별, 항목별 상세 준수 판정, GRADE 등급화, 결론)
+
+---
+
+Q 의 지침을 받아 Antigravity 가 생성했습니다.
