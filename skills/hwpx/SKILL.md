@@ -21,9 +21,9 @@ description: |
 | 작업 | 접근법 |
 |------|--------|
 | .hwp 텍스트 읽기 | `pyhwp` 라이브러리 사용 → `scripts/read_hwp.py` |
-| .hwpx 텍스트 읽기 | 언팩 후 XML 파싱 → `scripts/unpack.py` |
+| .hwpx 텍스트 읽기 | `python-hwpx` TextExtractor → `scripts/read_hwp.py` |
 | .hwpx 편집 | unpack → XML 수정 → pack → `scripts/pack.py` |
-| 새 .hwpx 생성 | `scripts/create.py` 참조 |
+| 새 .hwpx 생성 | `python-hwpx` HwpxDocument.new() → `scripts/create.py` |
 | HWP ↔ PDF/DOCX 변환 | LibreOffice 래퍼 → `scripts/soffice.py` |
 
 ---
@@ -58,6 +58,9 @@ OLE Compound Document 포맷. `pyhwp` 라이브러리로만 파싱 가능.
 ## 의존성 설치
 
 ```bash
+# python-hwpx - .hwpx 생성·읽기용 (핵심 라이브러리, Linux 호환)
+pip install python-hwpx --break-system-packages
+
 # pyhwp - .hwp 바이너리 읽기용 (없으면 설치)
 pip install pyhwp --break-system-packages
 
@@ -65,19 +68,31 @@ pip install pyhwp --break-system-packages
 python -m pip --version || python -m ensurepip --upgrade
 ```
 
+> **주의**: `pyhwpx`는 Windows 전용이므로 Linux 환경에서는 사용 불가. `python-hwpx`를 사용한다.
+
 LibreOffice는 시스템에 기본 설치되어 있다 (`/usr/bin/libreoffice`).
 
 ---
 
-## .hwp 파일 읽기
+## 텍스트 읽기
 
 ```bash
+# .hwp 또는 .hwpx 모두 지원
 python scripts/read_hwp.py document.hwp
+python scripts/read_hwp.py document.hwpx
 # → 텍스트를 stdout 또는 지정 파일로 출력
 ```
 
-`read_hwp.py`는 `pyhwp`의 `hwp5txt` 모듈을 사용해 텍스트를 추출한다.
-pyhwp가 설치되어 있지 않으면 LibreOffice로 docx 변환 후 텍스트를 읽는다.
+- `.hwpx`: `python-hwpx`의 `TextExtractor`를 우선 사용
+- `.hwp`: `pyhwp`의 `hwp5txt` 모듈 사용; 없으면 LibreOffice로 변환 후 추출
+
+**python-hwpx TextExtractor 직접 사용 (스크립트 없이):**
+```python
+from hwpx import TextExtractor
+te = TextExtractor("document.hwpx")
+text = te.extract_text()
+print(text)
+```
 
 ---
 
@@ -120,18 +135,32 @@ python scripts/pack.py unpacked/ output.hwpx --original document.hwpx
 
 ## 새 .hwpx 생성
 
+`python-hwpx` 라이브러리의 `HwpxDocument.new()`를 사용하면 한글에서 정상적으로 열리는 HWPX 파일을 생성할 수 있다.
+
 ```python
-# scripts/create.py 사용법
+# scripts/create.py 사용 (권장)
 python scripts/create.py --output new_document.hwpx
 
-# 또는 Python에서 직접 호출
+# Python에서 직접 호출
 from scripts.create import HWPXDocument
 
 doc = HWPXDocument()
-doc.add_paragraph("제목", style="title")
-doc.add_paragraph("본문 내용입니다.")
+doc.add_paragraph("제목", style="title")    # 개요 1 스타일
+doc.add_paragraph("소제목", style="h2")     # 개요 2 스타일
+doc.add_paragraph("본문 내용입니다.")        # 기본(바탕글) 스타일
+doc.add_blank_line()                         # 빈 줄
 doc.save("output.hwpx")
 ```
+
+**스타일 이름:**
+
+| style= | 한글 스타일 | 용도 |
+|--------|------------|------|
+| `"title"` / `"h1"` | 개요 1 | 문서 제목 |
+| `"h2"` | 개요 2 | 소제목 |
+| `"h3"` | 개요 3 | 소소제목 |
+| `"body"` / `"본문"` | 본문 | 본문 텍스트 |
+| `"normal"` / `"바탕글"` | 바탕글 | 기본(생략 시) |
 
 상세 API는 `scripts/create.py` 소스 참조.
 
@@ -171,6 +200,7 @@ XML 전체 구조, 네임스페이스, 스타일 참조 방법은 `references/hw
 
 ## Dependencies
 
+- **python-hwpx**: `.hwpx` 생성 및 텍스트 추출 (Linux 호환, `pip install python-hwpx --break-system-packages`)
 - **pyhwp**: `.hwp` 바이너리 텍스트 추출 (`pip install pyhwp --break-system-packages`)
 - **LibreOffice**: 파일 변환 (`/usr/bin/libreoffice`)
-- **Python stdlib**: `zipfile`, `xml.etree.ElementTree`, `lxml` (HWPX 처리)
+- **Python stdlib**: `zipfile`, `xml.etree.ElementTree`, `lxml` (HWPX 직접 편집 시)
