@@ -138,8 +138,9 @@ npx skills add qmakescl/QSkills/skills --skill hwpx
 
 #### 요청 예시
 
-**HWP 파일 읽기**
+**HWP/HWPX 파일 읽기**
 > "이 hwp 파일 내용을 읽어줘"
+> "보도자료.hwpx 내용을 요약해줘"
 
 **HWPX 파일 편집**
 > "보도자료.hwpx 파일에서 담당자 연락처 부분을 수정해줘"
@@ -152,20 +153,25 @@ npx skills add qmakescl/QSkills/skills --skill hwpx
 
 #### 자동 생성 결과물
 
-- 추출된 텍스트 (`.hwp` / `.hwpx` 읽기)
+- 추출된 텍스트 (`.hwp` → pyhwp, `.hwpx` → python-hwpx TextExtractor)
 - 편집된 `.hwpx` 파일 (unpack → XML 수정 → pack)
-- 새로 생성된 `.hwpx` 파일
+- 새로 생성된 `.hwpx` 파일 (python-hwpx `HwpxDocument.new()` 기반, 한컴오피스에서 정상 열림)
 - 변환된 PDF 또는 DOCX 파일
 
 #### 의존성
 
 ```bash
-# .hwp 읽기용 (없으면 설치)
+# python-hwpx - .hwpx 생성·읽기용 (핵심, Linux 호환)
+pip install python-hwpx --break-system-packages
+
+# pyhwp - .hwp 바이너리 읽기용
 pip install pyhwp --break-system-packages
 
 # LibreOffice (파일 변환, 시스템 기본 설치)
 /usr/bin/libreoffice
 ```
+
+> **주의**: `pyhwpx`는 Windows 전용(Win32 COM 의존)이므로 사용 불가. `python-hwpx`를 사용한다.
 
 ---
 
