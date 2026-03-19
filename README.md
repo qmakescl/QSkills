@@ -20,6 +20,11 @@ QSkills/
 │   ├── paper-evaluator/       # 논문 평가 스킬 (마크다운)
 │   │   ├── SKILL.md
 │   │   └── references/
+│   ├── hwpx/                  # 한글(HWP/HWPX) 문서 처리 스킬
+│   │   ├── SKILL.md
+│   │   ├── scripts/
+│   │   ├── references/
+│   │   └── evals/
 ├── plugins/                   # 플러그인 모음
 │   └── paper-eval-report/     # 논문 평가 및 Word 보고서 생성 플러그인
 │       ├── README.md
@@ -40,6 +45,7 @@ QSkills/
 | `df-basic-stats` | DataFrame 기초 통계 자동 산출 (타입 추론, 기술통계, ydata-profiling) |
 | `mean-comparison-test` | 평균비교 검정 (독립표본 t-test, 대응표본 t-test, ANOVA 및 사후검정) |
 | `paper-evaluator` | 논문 연구 설계 자동 식별 및 국제 보고/질 평가 지침 기반 평가, GRADE 등급화 (Markdown 보고서) |
+| `hwpx` | 한글(HWP/HWPX) 문서 읽기·생성·편집 및 PDF/DOCX 변환 (대한민국 공공기관·기업 표준 문서 포맷) |
 
 ## 플러그인 목록
 
@@ -63,6 +69,10 @@ npx skills add qmakescl/QSkills/skills --skill df-basic-stats
 
 ```bash
 npx skills add qmakescl/QSkills/skills --skill paper-evaluator
+```
+
+```bash
+npx skills add qmakescl/QSkills/skills --skill hwpx
 ```
 
 ## 스킬 사용법
@@ -117,6 +127,45 @@ npx skills add qmakescl/QSkills/skills --skill paper-evaluator
 #### 자동 생성 결과물
 
 - 마크다운 보고서 (연구 설계 식별, 항목별 상세 준수 판정, GRADE 등급화, 결론)
+
+### hwpx
+
+**한글 문서 처리** — `.hwp`(구형 바이너리) 및 `.hwpx`(신형 XML 기반) 파일 읽기·생성·편집, HWP ↔ PDF/DOCX 변환
+
+#### 트리거 키워드
+
+`.hwp`, `.hwpx`, `한글 문서`, `hwp 파일`, `한컴오피스`, `HWP 텍스트 추출`, `한글 문서 생성`, `HWP 변환` 등
+
+#### 요청 예시
+
+**HWP 파일 읽기**
+> "이 hwp 파일 내용을 읽어줘"
+
+**HWPX 파일 편집**
+> "보도자료.hwpx 파일에서 담당자 연락처 부분을 수정해줘"
+
+**새 한글 문서 생성**
+> "사업 계획서를 hwpx 파일로 만들어줘"
+
+**파일 변환**
+> "이 hwp 파일을 PDF로 변환해줘"
+
+#### 자동 생성 결과물
+
+- 추출된 텍스트 (`.hwp` / `.hwpx` 읽기)
+- 편집된 `.hwpx` 파일 (unpack → XML 수정 → pack)
+- 새로 생성된 `.hwpx` 파일
+- 변환된 PDF 또는 DOCX 파일
+
+#### 의존성
+
+```bash
+# .hwp 읽기용 (없으면 설치)
+pip install pyhwp --break-system-packages
+
+# LibreOffice (파일 변환, 시스템 기본 설치)
+/usr/bin/libreoffice
+```
 
 ---
 
