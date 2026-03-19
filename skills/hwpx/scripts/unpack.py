@@ -44,7 +44,7 @@ def unpack(hwpx_path: Path, output_dir: Path):
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
 
-    XML_EXTENSIONS = {".xml", ".hml", ".rels"}
+    XML_EXTENSIONS = {".xml", ".hpf", ".rels"}
 
     with zipfile.ZipFile(hwpx_path, "r") as zf:
         for member in zf.namelist():
@@ -67,7 +67,8 @@ def unpack(hwpx_path: Path, output_dir: Path):
             dest.write_bytes(data)
 
     print(f"✅ 언팩 완료: {hwpx_path} → {output_dir}")
-    print(f"   본문 XML: {output_dir}/Contents/content.hml")
+    print(f"   본문 XML: {output_dir}/Contents/section0.xml")
+    print(f"   스타일:   {output_dir}/Contents/header.xml")
 
 
 def main():

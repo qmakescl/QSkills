@@ -30,19 +30,24 @@ description: |
 
 ## 포맷 구조
 
-### .hwpx (신형, XML 기반)
+### .hwpx (신형, XML 기반) — KS X 6101 실제 구조
 ```
 document.hwpx (ZIP)
-├── mimetype                      ← "application/hwp+zip"
-├── META-INF/container.xml        ← 루트 파일 지정
+├── mimetype                      ← "application/hwp+zip" (ZIP_STORED, 반드시 첫 번째)
+├── version.xml                   ← 버전 정보
+├── META-INF/
+│   ├── container.xml             ← Contents/content.hpf 를 rootfile 로 지정
+│   └── manifest.xml
 ├── Contents/
-│   ├── content.hml               ← 본문 (핵심)
-│   ├── header.xml                ← 스타일, 폰트, 문단 모양
-│   └── BinData/                  ← 이미지 등 바이너리
-└── Preview/
-    ├── PrvImage.png              ← 미리보기 이미지
-    └── PrvText.txt               ← 텍스트 미리보기
+│   ├── content.hpf               ← OPF 패키지 (header + section0 목록)
+│   ├── header.xml                ← 스타일, 폰트, charPr, paraPr 정의
+│   └── section0.xml              ← 본문 (핵심). 첫 <hp:p>에 <hp:secPr> 필수
+├── Preview/
+│   └── PrvText.txt               ← 텍스트 미리보기
+└── settings.xml
 ```
+
+> **주의**: `content.hml` 파일은 **구 비표준 포맷**이다. 실제 한글 앱이 읽는 본문 파일은 `section0.xml`이다.
 
 ### .hwp (구형, 바이너리)
 OLE Compound Document 포맷. `pyhwp` 라이브러리로만 파싱 가능.
@@ -86,8 +91,8 @@ python scripts/unpack.py document.hwpx unpacked/
 python scripts/pack.py unpacked/ output.hwpx
 ```
 
-언팩 후 `unpacked/Contents/content.hml`이 본문 XML이다.
-텍스트는 `<hp:T>` 태그 안에 있다. 자세한 XML 구조는 `references/hwpx-xml.md` 참조.
+언팩 후 `unpacked/Contents/section0.xml`이 본문 XML이다.
+텍스트는 `<hp:t>` 태그 안에 있다 (소문자). 자세한 XML 구조는 `references/hwpx-xml.md` 참조.
 
 ---
 
@@ -99,9 +104,9 @@ python scripts/unpack.py document.hwpx unpacked/
 ```
 
 ### Step 2: XML 편집
-`unpacked/Contents/content.hml`을 직접 수정한다.
-- 텍스트 수정: `<hp:T>` 태그 내용 변경
-- 문단 추가: `<hp:P>` 블록 추가 (기존 문단 복사 후 수정 권장)
+`unpacked/Contents/section0.xml`을 직접 수정한다.
+- 텍스트 수정: `<hp:t>` 태그 내용 변경 (소문자)
+- 문단 추가: `<hp:p>` 블록 추가 (기존 문단 복사 후 수정 권장, 소문자)
 - **Edit 도구를 직접 사용한다** (Python 스크립트 작성 불필요)
 
 XML 구조 상세는 `references/hwpx-xml.md`를 읽는다.
@@ -151,9 +156,13 @@ python scripts/soffice.py --headless --convert-to pdf document.hwpx
 
 ## XML 핵심 규칙
 
-- **`<hp:T>` 안에서 `\n` 사용 금지** — 새 줄은 새 `<hp:P>` 블록으로 표현
+- **네임스페이스는 2011** — `http://www.hancom.co.kr/hwpml/2011/*` (2012 아님)
+- **태그는 소문자** — `<hp:p>`, `<hp:run>`, `<hp:t>` (대문자 `P/RUN/T` 사용 금지)
+- **`<hp:t>` 안에서 `\n` 사용 금지** — 새 줄은 새 `<hp:p>` 블록으로 표현
+- **첫 번째 `<hp:p>` 에 `<hp:secPr>` 필수** — 없으면 한글 앱이 "파일 손상됨" 오류를 냄
 - **네임스페이스 반드시 유지** — 기존 XML의 xmlns 선언을 제거하지 않는다
-- **`id` 속성 중복 금지** — 새 `<hp:P>` 추가 시 기존 최대 id + 1 사용
+- **`id` 속성 중복 금지** — 새 `<hp:p>` 추가 시 기존 최대 id + 1 사용
+- **본문 파일은 section0.xml** — `content.hml`은 비표준이므로 생성하지 않는다
 - **BinData 경로** — 이미지 참조 시 `Contents/BinData/` 하위 파일명과 일치해야 함
 
 XML 전체 구조, 네임스페이스, 스타일 참조 방법은 `references/hwpx-xml.md`에서 확인한다.
