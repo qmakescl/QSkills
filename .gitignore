@@ -32,6 +32,9 @@ report/
 *-stats.json
 
 
+# 중간 단계
+node_modules/
+
 # 검증 등으로 사용하는 skills
 .agents/
 .agent/

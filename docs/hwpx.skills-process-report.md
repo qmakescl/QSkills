@@ -1,6 +1,6 @@
 # hwpx 스킬 개발 과정 보고서
 
-**작성일**: 2026-03-19 (최종 업데이트: 2026-03-20)
+**작성일**: 2026-03-19 (최종 업데이트: 2026-03-20 v2)
 **작성자**: Claude (Cowork)
 **스킬 위치**: `.skills/skills/hwpx/`
 **패키지 파일**: `hwpx.skill`
@@ -401,6 +401,169 @@ class HWPXDocument:
 
 ---
 
+### Phase 10: `read_hwp.py` — `.hwpx` 확장자 미처리 버그 발견 및 수정
+
+**배경:** python-hwpx 도입 이후 `read_hwp.py`는 `.hwp`용 pyhwp 경로만 개선했고, `.hwpx` 파일 처리는 별도 분기 없이 그대로였다.
+
+**버그:** `.hwpx` 파일이 들어오면 pyhwp(`Hwp5File`)가 ZIP 파일을 OLE 바이너리로 인식 → 파싱 실패 → LibreOffice 폴백도 HWPX를 제대로 지원하지 않아 실패. `.hwpx` 읽기가 항상 오류 종료되었다.
+
+**원인 분석:**
+```python
+# ❌ 기존 코드: 확장자 구분 없이 항상 pyhwp 시도
+def extract_text(hwp_path: Path) -> str:
+    try:
+        return read_with_pyhwp(hwp_path)      # .hwpx를 OLE로 처리 → 실패
+    except Exception as e:
+        return read_with_libreoffice(hwp_path) # HWPX 지원 미흡 → 실패
+```
+
+**수정:** 확장자 분기를 추가하여 `.hwpx`는 `python-hwpx TextExtractor` 전용 경로로 처리.
+
+```python
+# ✅ 수정된 코드
+def extract_text(hwp_path: Path) -> str:
+    # .hwpx는 python-hwpx TextExtractor 전용
+    if hwp_path.suffix.lower() == ".hwpx":
+        try:
+            return read_with_hwpx(hwp_path)
+        except Exception as e:
+            raise RuntimeError(
+                f".hwpx 텍스트 추출 실패: {e}\n"
+                "설치 방법: pip install python-hwpx --break-system-packages"
+            )
+    # .hwp: pyhwp 우선, LibreOffice 폴백
+    pyhwp_err = None
+    try:
+        return read_with_pyhwp(hwp_path)
+    except Exception as e:
+        pyhwp_err = e
+        ...  # LibreOffice 폴백
+
+def read_with_hwpx(hwp_path: Path) -> str:
+    from hwpx import TextExtractor
+    te = TextExtractor(str(hwp_path))
+    text = te.extract_text()
+    if not text:
+        raise RuntimeError("TextExtractor 출력이 비어있음")
+    return text
+```
+
+---
+
+### Phase 11: SKILL.md Subagent Execution Model 설계 및 보완
+
+**배경:** 사용자가 hwpx 스킬을 Antigravity(Cowork)에서 서브에이전트로 작동시키기 위해 SKILL.md에 `Execution Model` 섹션을 추가한 버전을 직접 작성해 업로드했다.
+
+**사용자 제안 구조:** Task / Input / Output path / Setup / Rules 형태의 Subagent Prompt Template.
+
+**검토 결과 — 4가지 보완 필요:**
+
+| # | 항목 | 문제 | 수정 내용 |
+|---|------|------|-----------|
+| 1 | Skill directory 필드 | subagent가 스크립트 경로를 알 수 없음 | Prompt Template에 `Skill directory: {절대 경로}` 필드 추가 |
+| 2 | Setup 블록 CWD | subagent가 임의 디렉토리에서 시작 → `python scripts/create.py` 실패 | Setup에 `cd {Skill directory}` 1단계 명시 |
+| 3 | read_text 반환 방식 | 대용량 파일 반환 기준 불명확 | `≤ 500줄 → 텍스트 직접 반환 / > 500줄 → Output path에 저장 후 경로 반환` 명시 |
+| 4 | edit_hwpx 구분 | 읽기·쓰기 경로 혼용 가능성 | `input_path` / `output_path` 필드 분리 명시 |
+
+**확정된 Subagent Prompt Template 구조:**
+
+```
+Task: {작업 유형}
+Input: {입력 파일 절대 경로}
+Output path: {결과 파일 저장 절대 경로}
+Skill directory: {이 SKILL.md가 위치한 hwpx 스킬 폴더 절대 경로}
+
+Setup — run in this exact order before anything else:
+1. cd {Skill directory}
+2. pip install python-hwpx --break-system-packages -q
+3. Read {Skill directory}/SKILL.md for task procedures.
+
+Rules:
+- Work silently. No narration, no progress updates.
+- read_text: ≤ 500줄 → 텍스트 직접 반환 / > 500줄 → Output path에 저장 후 경로만 반환
+- 기타 작업: 출력 파일의 절대 경로만 반환
+- 오류 시: ERROR: <한 줄 요약>
+```
+
+**오케스트레이터 호출 방법 (Agent 도구):**
+```
+subagent_type: "general-purpose"
+description:   "HWP/HWPX {작업 유형} 실행"
+prompt:        위 Template을 채운 전체 문자열
+```
+
+---
+
+### Phase 12: 샌드박스 환경 실증 검증 — 버그 2개 발견 및 수정
+
+**목표:** 업데이트된 SKILL.md가 실제 Cowork 샌드박스에서 정상 작동하는지 확인.
+
+**검증 방법:** subagent가 임의 CWD(예: `/tmp`)에서 시작하는 시나리오를 시뮬레이션하여 절대경로 기반 스크립트 호출 테스트.
+
+**버그 A — `ModuleNotFoundError: No module named 'scripts'`**
+
+```bash
+# ❌ subagent CWD = /tmp 일 때
+cd /tmp
+python -c "from scripts.create import HWPXDocument"
+# → ModuleNotFoundError: No module named 'scripts'
+```
+
+원인: Python이 현재 디렉토리 기준으로 `scripts/` 패키지를 탐색하는데, CWD가 skill 디렉토리가 아니므로 모듈을 찾지 못함.
+
+수정: Setup 1단계 `cd {Skill directory}` 추가 → subagent가 항상 skill 디렉토리에서 시작.
+
+```bash
+# ✅ 수정 후
+cd /…/.skills/skills/hwpx/
+python -c "from scripts.create import HWPXDocument"  # 정상
+```
+
+**버그 B — `.hwpx` 파일 읽기 실패 (Phase 10과 연동)**
+
+샌드박스 검증 중 `.hwpx` 파일을 `read_text` 작업으로 전달했을 때 pyhwp가 ZIP을 OLE로 인식하여 실패하는 것을 재확인. Phase 10의 확장자 분기 수정으로 함께 해결.
+
+**검증 결과:** 두 버그 수정 후 read_text / create_hwpx 작업 모두 샌드박스에서 정상 동작 확인 ✅
+
+---
+
+### Phase 13: Antigravity 중간 과정 노출 문제 — Agent 도구 명시로 해결
+
+**현상:** Antigravity(Cowork)에서 hwpx 스킬을 실제로 실행하니, 스크립트 설치·파일 읽기·저장 등의 **중간 tool call이 사용자에게 모두 노출**되었다.
+
+**원인 분석:**
+
+기존 SKILL.md Execution Model 섹션이 "subagent에 위임하라"고만 기술하고, **어떤 도구(tool)를 호출해야 하는지를 명시하지 않았다**. 그 결과 오케스트레이터(Claude)가 "위임=직접 실행"으로 해석하여 bash / read / write 도구들을 자신의 컨텍스트에서 직접 호출했다.
+
+```
+# ❌ 기존 (모호한 기술)
+## Execution Model
+모든 실행 작업을 subagent에 위임한다.
+Subagent Prompt Template: ...
+```
+
+**수정:** `Agent 도구` + `subagent_type: "general-purpose"` 파라미터를 명시적으로 지정.
+
+```
+# ✅ 수정 후 (도구 명시)
+## Execution Model (Cowork / Claude Agent SDK)
+
+오케스트레이터가 할 일:
+3. **Agent 도구 호출** — `subagent_type: "general-purpose"` 로 아래 Prompt Template을 채워서 즉시 호출
+
+Agent 도구 파라미터:
+  subagent_type: "general-purpose"
+  description:   "HWP/HWPX {작업 유형} 실행"
+  prompt:        (Subagent Prompt Template 전체)
+
+오케스트레이터 규칙:
+- bash, 파일 읽기/쓰기 등 중간 tool call을 직접 실행하지 않는다
+```
+
+**결과:** 오케스트레이터가 Agent 도구를 통해 subagent를 생성하고, 중간 과정은 subagent 내부에서만 실행. 사용자에게는 최종 결과(파일 경로 또는 텍스트)만 전달됨 ✅
+
+---
+
 ## 5. 발견된 버그 목록 및 수정 내역
 
 | # | 버그 | 원인 | 수정 |
@@ -417,6 +580,8 @@ class HWPXDocument:
 | 10 | "파일이 손상됨" 5차 — `secPr` 배치 | `secPr`과 텍스트를 같은 `<hp:run>`에 혼합 | secPr run과 텍스트 run을 별도 분리 |
 | 11 | `pyhwpx` Windows 전용 | Win32 COM 의존 — Linux에서 `RuntimeError` | `python-hwpx`(Linux 호환)로 대체 |
 | 12 | `ensure_run_style(bold=True)` TypeError | `python-hwpx` 내부에서 lxml과 stdlib ET 혼용 | bold 미사용, 제목은 개요 스타일로 대체 (upstream 버그) |
+| 13 | `.hwpx` 읽기 항상 실패 | `extract_text()`에 확장자 분기 없어 `.hwpx`를 pyhwp(OLE)로 처리 → LibreOffice 폴백도 실패 | `.hwpx` 확장자 조건 분기 추가 → `TextExtractor` 전용 경로로 처리 |
+| 14 | `ModuleNotFoundError: No module named 'scripts'` | subagent CWD가 skill 디렉토리가 아닌 임의 경로 → 상대 import 실패 | Setup 1단계에 `cd {Skill directory}` 추가. subagent 항상 skill 디렉토리에서 시작 |
 
 ---
 
@@ -469,8 +634,8 @@ class HWPXDocument:
 
 | 파일 | 역할 | 상태 |
 |------|------|------|
-| `SKILL.md` | 트리거 조건 + 퀵 레퍼런스 + 워크플로 | ✅ python-hwpx 반영 업데이트 완료 |
-| `scripts/read_hwp.py` | .hwp (pyhwp) · .hwpx (python-hwpx TextExtractor) 텍스트 추출 | ✅ |
+| `SKILL.md` | 트리거 조건 + 퀵 레퍼런스 + 워크플로 + Execution Model | ✅ Subagent Execution Model 추가, Agent 도구 명시 완료 |
+| `scripts/read_hwp.py` | .hwp (pyhwp) · .hwpx (python-hwpx TextExtractor) 텍스트 추출 | ✅ .hwpx 확장자 분기 추가 (Phase 10) |
 | `scripts/create.py` | 새 .hwpx 생성 — **python-hwpx `HwpxDocument.new()` 기반** | ✅ 완전 교체 (Phase 9) |
 | `scripts/unpack.py` | .hwpx → 디렉터리 (XML 들여쓰기) | ✅ |
 | `scripts/pack.py` | 디렉터리 → .hwpx (mimetype 첫 번째) | ✅ |
@@ -527,3 +692,7 @@ zipfile, xml.etree.ElementTree, xml.sax.saxutils
 | 2026-03-20 | python-hwpx 도입, create.py 완전 교체 | ✅ 정상 열림 |
 | 2026-03-20 | 브로셔 요약 HWPX 생성 (python-hwpx 기반) | ✅ 성공 |
 | 2026-03-20 | SKILL.md 업데이트, hwpx.skill 재패키징 | ✅ 완료 |
+| 2026-03-20 | `read_hwp.py` .hwpx 확장자 분기 버그 발견 및 수정 | ✅ TextExtractor 전용 경로 추가 |
+| 2026-03-20 | 사용자 제안 Execution Model 검토 → 4항목 보완 (Skill directory, Setup cd, read_text 반환 기준, edit_hwpx 필드 분리) | ✅ SKILL.md 반영 완료 |
+| 2026-03-20 | 샌드박스 환경 실증 검증 — CWD 버그·.hwpx 읽기 버그 발견 및 수정 | ✅ 두 버그 모두 수정 |
+| 2026-03-20 | Antigravity 중간 과정 노출 문제 — Agent 도구 + subagent_type 명시 | ✅ 오케스트레이터가 Agent 도구만 호출하도록 수정 |

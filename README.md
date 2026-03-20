@@ -130,7 +130,9 @@ npx skills add qmakescl/QSkills/skills --skill hwpx
 
 ### hwpx
 
-**한글 문서 처리** — `.hwp`(구형 바이너리) 및 `.hwpx`(신형 XML 기반) 파일 읽기·생성·편집, HWP ↔ PDF/DOCX 변환
+**한글 문서 처리** — `.hwp`(구형 바이너리) 및 `.hwpx`(신형 XML 기반, KS X 6101) 파일 읽기·생성·편집, HWP ↔ PDF/DOCX 변환
+
+> **개발 현황**: 13단계 Phase를 거쳐 개발 완료. 상세 내역은 [`docs/hwpx.skills-process-report.md`](docs/hwpx.skills-process-report.md) 참조.
 
 #### 트리거 키워드
 
@@ -151,12 +153,31 @@ npx skills add qmakescl/QSkills/skills --skill hwpx
 **파일 변환**
 > "이 hwp 파일을 PDF로 변환해줘"
 
+#### 실행 모델 (Subagent Execution Model)
+
+이 스킬은 **격리된 Subagent**에 작업을 위임하는 방식으로 동작합니다.
+오케스트레이터(부모 에이전트)는 중간 과정을 사용자에게 노출하지 않고 최종 결과(파일 경로 또는 추출 텍스트)만 반환합니다.
+
+Subagent는 실행 전 반드시 스킬 디렉토리로 이동 후 스크립트를 실행합니다(`cd {Skill directory}`).
+
 #### 자동 생성 결과물
 
-- 추출된 텍스트 (`.hwp` → pyhwp, `.hwpx` → python-hwpx TextExtractor)
-- 편집된 `.hwpx` 파일 (unpack → XML 수정 → pack)
-- 새로 생성된 `.hwpx` 파일 (python-hwpx `HwpxDocument.new()` 기반, 한컴오피스에서 정상 열림)
-- 변환된 PDF 또는 DOCX 파일
+- 추출된 텍스트
+  - `.hwp` → `pyhwp` (`hwp5txt` 모듈, 임시 파일 방식)
+  - `.hwpx` → `python-hwpx TextExtractor` 전용 경로 (확장자 분기 처리됨)
+- 편집된 `.hwpx` 파일 (unpack → XML 직접 수정 → pack)
+- 새로 생성된 `.hwpx` 파일 (`python-hwpx HwpxDocument.new()` 기반, 한컴오피스에서 정상 열림)
+- 변환된 PDF 또는 DOCX 파일 (LibreOffice 래퍼)
+
+#### 알려진 한계
+
+| 항목 | 현황 |
+|------|------|
+| Bold 텍스트 | `python-hwpx` upstream 버그로 미지원. 제목 스타일로 대체 |
+| 표(TABLE) 생성 | `create.py` 미구현 |
+| 이미지 삽입 | `create.py` 미구현 |
+| HWPX → PDF 변환 | LibreOffice HWPX 지원 미흡으로 제한적 |
+| `.hwp` 직접 쓰기 | 바이너리 포맷이므로 불가. HWPX로 생성 후 변환 안내 |
 
 #### 의존성
 
@@ -171,7 +192,7 @@ pip install pyhwp --break-system-packages
 /usr/bin/libreoffice
 ```
 
-> **주의**: `pyhwpx`는 Windows 전용(Win32 COM 의존)이므로 사용 불가. `python-hwpx`를 사용한다.
+> **주의**: `pyhwpx`는 Windows 전용(Win32 COM 의존)이므로 Linux/Mac 환경에서는 `python-hwpx`를 사용한다.
 
 ---
 
