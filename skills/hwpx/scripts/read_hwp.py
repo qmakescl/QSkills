@@ -1,16 +1,31 @@
 #!/usr/bin/env python3
 """
-read_hwp.py — .hwp 바이너리 파일에서 텍스트를 추출한다.
+read_hwp.py — .hwp / .hwpx 파일에서 텍스트를 추출한다.
 
 사용법:
     python scripts/read_hwp.py document.hwp
+    python scripts/read_hwp.py document.hwpx
     python scripts/read_hwp.py document.hwp --output out.txt
+
+처리 방식:
+    .hwpx → python-hwpx TextExtractor (우선)
+    .hwp  → pyhwp → LibreOffice (폴백 순서)
 """
 
 import sys
 import argparse
 import subprocess
 from pathlib import Path
+
+
+def read_with_hwpx(hwp_path: Path) -> str:
+    """python-hwpx TextExtractor로 .hwpx 텍스트 추출."""
+    from hwpx import TextExtractor
+    te = TextExtractor(str(hwp_path))
+    text = te.extract_text()
+    if not text:
+        raise RuntimeError("TextExtractor 출력이 비어있음")
+    return text
 
 
 def read_with_pyhwp(hwp_path: Path) -> str:
@@ -57,16 +72,29 @@ def read_with_libreoffice(hwp_path: Path) -> str:
 
 
 def extract_text(hwp_path: Path) -> str:
-    """hwp 파일에서 텍스트 추출. pyhwp → LibreOffice 순으로 시도."""
+    """hwp/hwpx 파일에서 텍스트 추출.
+
+    .hwpx: python-hwpx TextExtractor 사용
+    .hwp:  pyhwp → LibreOffice 순으로 폴백
+    """
+    # .hwpx는 python-hwpx TextExtractor 전용
+    if hwp_path.suffix.lower() == ".hwpx":
+        try:
+            return read_with_hwpx(hwp_path)
+        except Exception as e:
+            raise RuntimeError(
+                f".hwpx 텍스트 추출 실패: {e}\n"
+                f"설치 방법: pip install python-hwpx --break-system-packages"
+            )
+
+    # .hwp: pyhwp 우선, LibreOffice 폴백
     pyhwp_err = None
-    # pyhwp 우선 시도
     try:
         return read_with_pyhwp(hwp_path)
     except Exception as e:
         pyhwp_err = e
         print(f"[INFO] pyhwp 실패, LibreOffice로 재시도: {e}", file=sys.stderr)
 
-    # LibreOffice 대체
     try:
         return read_with_libreoffice(hwp_path)
     except Exception as lo_err:
@@ -79,8 +107,8 @@ def extract_text(hwp_path: Path) -> str:
 
 
 def main():
-    parser = argparse.ArgumentParser(description=".hwp 파일 텍스트 추출")
-    parser.add_argument("hwp_file", help=".hwp 파일 경로")
+    parser = argparse.ArgumentParser(description=".hwp / .hwpx 파일 텍스트 추출")
+    parser.add_argument("hwp_file", help=".hwp 또는 .hwpx 파일 경로")
     parser.add_argument("--output", "-o", help="출력 파일 경로 (없으면 stdout)")
     args = parser.parse_args()
 

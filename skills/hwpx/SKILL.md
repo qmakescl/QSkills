@@ -16,6 +16,76 @@ description: |
 한글(HWP)은 대한민국 공공기관·기업에서 광범위하게 쓰이는 문서 포맷이다.
 파일 형식은 두 가지다: **`.hwp`** (구형 바이너리) · **`.hwpx`** (신형 XML 기반, ZIP 아카이브).
 
+---
+
+## Execution Model (Cowork / Claude Agent SDK)
+
+이 스킬의 모든 실행 작업은 **Agent 도구로 띄운 general-purpose subagent**에 위임한다.
+오케스트레이터는 중간 과정을 사용자에게 노출하지 않고 최종 결과만 전달한다.
+
+### 오케스트레이터가 할 일 (순서대로)
+
+1. **작업 유형 판단** — 아래 Dispatch 테이블 참조
+2. **스킬 디렉토리 경로 확인** — 이 SKILL.md 파일이 위치한 폴더 (예: `/…/.skills/skills/hwpx/`)
+3. **Agent 도구 호출** — `subagent_type: "general-purpose"` 로 아래 Prompt Template을 채워서 즉시 호출
+4. **결과 수신 후 사용자에게 전달** — subagent가 반환한 파일 경로 또는 텍스트만 출력
+
+### 오케스트레이터 규칙
+
+- bash, 파일 읽기/쓰기 등 **중간 tool call을 직접 실행하지 않는다** — 반드시 subagent에 위임
+- "지금 언팩 중입니다", "설치하겠습니다" 같은 **진행 상황 멘트를 하지 않는다**
+- 오류 발생 시 스택 트레이스 대신 `ERROR: <한 줄 요약>`만 사용자에게 전달한다
+
+### Agent 도구 호출 방법
+
+```
+Agent 도구 파라미터:
+  subagent_type: "general-purpose"
+  description:   "HWP/HWPX {작업 유형} 실행"
+  prompt:        ↓ 아래 Prompt Template을 채운 전체 문자열
+```
+
+### Subagent Prompt Template
+
+`{…}` 부분을 실제 값으로 치환한 뒤 `prompt` 파라미터에 그대로 넣는다.
+
+```
+You are a silent executor for HWP/HWPX document processing.
+
+Task: {작업 유형 — 아래 Dispatch 테이블 참조}
+Input: {입력 파일 절대 경로}
+Output path: {결과 파일 저장 절대 경로}
+Skill directory: {이 SKILL.md가 위치한 hwpx 스킬 폴더 절대 경로}
+
+[edit_hwpx 작업일 때만 아래 두 줄 추가]
+Original file: {편집 전 원본 파일 절대 경로}
+Edit instructions: {편집 내용 상세 설명}
+
+Setup — run in this exact order before anything else:
+1. cd {Skill directory}
+2. pip install python-hwpx --break-system-packages -q
+3. Read {Skill directory}/SKILL.md for task procedures.
+
+Rules:
+- Work silently. No narration, no progress updates.
+- read_text: extracted text ≤ 500 lines → return text directly.
+             extracted text > 500 lines → save to {Output path}, return the path.
+- All other tasks: return ONLY the absolute path of the output file.
+- On error: return ERROR: <reason in one line>
+- Return NOTHING else.
+```
+
+### Dispatch — 작업 유형별 매핑
+
+| 사용자 요청 패턴 | Task 값 | 참조 섹션 | edit_hwpx 추가 필드 |
+|----------------|---------|----------|-------------------|
+| HWP/HWPX 텍스트 읽기 | `read_text` | 텍스트 읽기 | — |
+| HWPX 내용 편집 | `edit_hwpx` | .hwpx 편집 (3단계) | Original file, Edit instructions |
+| 새 HWPX 생성 | `create_hwpx` | 새 .hwpx 생성 | — |
+| HWP/HWPX → PDF/DOCX | `convert` | 파일 변환 | — |
+
+---
+
 ## Quick Reference
 
 | 작업 | 접근법 |
