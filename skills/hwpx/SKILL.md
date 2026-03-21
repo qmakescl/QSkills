@@ -64,7 +64,8 @@ Edit instructions: {편집 내용 상세 설명}
 Setup — run in this exact order before anything else:
 1. cd {Skill directory}
 2. pip install python-hwpx --break-system-packages -q
-3. Read {Skill directory}/SKILL.md for task procedures.
+3. pip install pyhwp --break-system-packages -q
+4. Read {Skill directory}/SKILL.md for task procedures.
 
 Rules:
 - Work silently. No narration, no progress updates.
@@ -81,7 +82,8 @@ Rules:
 |----------------|---------|----------|-------------------|
 | HWP/HWPX 텍스트 읽기 | `read_text` | 텍스트 읽기 | — |
 | HWPX 내용 편집 | `edit_hwpx` | .hwpx 편집 (3단계) | Original file, Edit instructions |
-| 새 HWPX 생성 | `create_hwpx` | 새 .hwpx 생성 | — |
+| 새 HWPX 생성 (텍스트만) | `create_hwpx` | 새 .hwpx 생성 | — |
+| 새 HWPX 생성 (표 포함) | `create_hwpx_with_table` | 새 .hwpx 생성 + 표 삽입 | — |
 | HWP/HWPX → PDF/DOCX | `convert` | 파일 변환 | — |
 
 ---
@@ -205,6 +207,8 @@ python scripts/pack.py unpacked/ output.hwpx --original document.hwpx
 
 ## 새 .hwpx 생성
 
+### 텍스트만 있는 문서
+
 `python-hwpx` 라이브러리의 `HwpxDocument.new()`를 사용하면 한글에서 정상적으로 열리는 HWPX 파일을 생성할 수 있다.
 
 ```python
@@ -234,6 +238,18 @@ doc.save("output.hwpx")
 
 상세 API는 `scripts/create.py` 소스 참조.
 
+### 표(TABLE) 포함 문서
+
+`python-hwpx` 라이브러리는 표 직접 생성을 지원하지 않는다. 표가 필요하면 다음 절차를 따른다:
+
+1. `scripts/create.py`로 기본 hwpx 생성 (텍스트 단락)
+2. `scripts/unpack.py`로 언팩
+3. `Contents/section0.xml`에 `<hp:tbl>` 블록을 직접 삽입
+4. `scripts/pack.py`로 재팩
+
+표 XML 구조는 `references/hwpx-xml.md` → "표(tbl) 구조" 및 "자주 쓰는 패턴" 섹션 참조.
+핵심: 표도 `hp:` 네임스페이스 사용. `<hp:tbl>` → `<hp:tr>` → `<hp:tc>` → `<hp:p>` 계층.
+
 ---
 
 ## 파일 변환
@@ -256,15 +272,16 @@ python scripts/soffice.py --headless --convert-to pdf document.hwpx
 ## XML 핵심 규칙
 
 - **네임스페이스는 2011** — `http://www.hancom.co.kr/hwpml/2011/*` (2012 아님)
-- **태그는 소문자** — `<hp:p>`, `<hp:run>`, `<hp:t>` (대문자 `P/RUN/T` 사용 금지)
+- **태그는 소문자** — `<hp:p>`, `<hp:run>`, `<hp:t>`, `<hp:tbl>`, `<hp:tr>`, `<hp:tc>` (대문자 금지)
 - **`<hp:t>` 안에서 `\n` 사용 금지** — 새 줄은 새 `<hp:p>` 블록으로 표현
-- **첫 번째 `<hp:p>` 에 `<hp:secPr>` 필수** — 없으면 한글 앱이 "파일 손상됨" 오류를 냄
-- **네임스페이스 반드시 유지** — 기존 XML의 xmlns 선언을 제거하지 않는다
-- **`id` 속성 중복 금지** — 새 `<hp:p>` 추가 시 기존 최대 id + 1 사용
-- **본문 파일은 section0.xml** — `content.hml`은 비표준이므로 생성하지 않는다
+- **`<hp:secPr>`는 첫 번째 `<hp:p>`의 `<hp:run>` 안에 위치** — 없으면 "파일 손상됨" 오류
+- **네임스페이스 반드시 유지** — `<hs:sec>` 루트의 xmlns 선언을 제거하지 않는다
+- **`id` 속성 중복 금지** — 큰 난수 정수 사용, 문서 내 유일해야 함
+- **본문 파일은 section0.xml** — `content.hml`은 구형 비표준이므로 절대 생성하지 않는다
+- **표 태그**: `<hp:tbl>` → `<hp:tr>` → `<hp:tc>` (`ht:` 네임스페이스 사용 금지)
 - **BinData 경로** — 이미지 참조 시 `Contents/BinData/` 하위 파일명과 일치해야 함
 
-XML 전체 구조, 네임스페이스, 스타일 참조 방법은 `references/hwpx-xml.md`에서 확인한다.
+XML 전체 구조, 네임스페이스, 스타일 참조 방법, 표 패턴은 `references/hwpx-xml.md`에서 확인한다.
 
 ---
 

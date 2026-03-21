@@ -1,6 +1,6 @@
 # hwpx 스킬 개발 과정 보고서
 
-**작성일**: 2026-03-19 (최종 업데이트: 2026-03-20 v2)
+**작성일**: 2026-03-19 (최종 업데이트: 2026-03-21 v3)
 **작성자**: Claude (Cowork)
 **스킬 위치**: `.skills/skills/hwpx/`
 **패키지 파일**: `hwpx.skill`
@@ -696,3 +696,217 @@ zipfile, xml.etree.ElementTree, xml.sax.saxutils
 | 2026-03-20 | 사용자 제안 Execution Model 검토 → 4항목 보완 (Skill directory, Setup cd, read_text 반환 기준, edit_hwpx 필드 분리) | ✅ SKILL.md 반영 완료 |
 | 2026-03-20 | 샌드박스 환경 실증 검증 — CWD 버그·.hwpx 읽기 버그 발견 및 수정 | ✅ 두 버그 모두 수정 |
 | 2026-03-20 | Antigravity 중간 과정 노출 문제 — Agent 도구 + subagent_type 명시 | ✅ 오케스트레이터가 Agent 도구만 호출하도록 수정 |
+| 2026-03-21 | 스킬 전체 검토 — 불일치·누락 항목 4종 발견 | 분석 완료, 수정 착수 |
+| 2026-03-21 | tech.hancom.com/hwpxformat/ 공식 문서 참조 + python-hwpx 생성 파일 직접 언팩 검증 | 실제 구조(태그·네임스페이스·표) 확인 완료 |
+| 2026-03-21 | `references/hwpx-xml.md` 전면 재작성 (HML → section0.xml 기반) | ✅ 완료 |
+| 2026-03-21 | `SKILL.md` 수정 — pyhwp 설치 추가, 표 생성 절차·Dispatch 케이스 보완, XML 규칙 갱신 | ✅ 완료 |
+| 2026-03-21 | `evals/evals.json` `skill_name` 오류 수정 (`"hwp"` → `"hwpx"`) | ✅ 완료 |
+
+---
+
+## 12. 2026-03-21 스킬 품질 개선 (v3)
+
+### 12.1 배경 — 검토에서 발견된 불일치 4종
+
+v2 완성 이후 스킬 전체를 재검토한 결과, `references/hwpx-xml.md`와 `SKILL.md` 사이에 심각한 내용 충돌이 존재하며, 기능 누락 및 설정 오류도 함께 발견됐다.
+
+| # | 위치 | 문제 유형 | 내용 |
+|---|------|----------|------|
+| 1 | `hwpx-xml.md` ↔ `SKILL.md` | **심각한 내용 충돌** | 아래 12.2 상세 설명 |
+| 2 | `evals.json` | **설정 오류** | `"skill_name": "hwp"` → 실제 스킬명은 `"hwpx"` |
+| 3 | `SKILL.md` Dispatch 테이블 | **기능 누락** | 표 포함 문서 생성 케이스(`create_hwpx_with_table`) 없음 |
+| 4 | `SKILL.md` Subagent prompt | **의존성 누락** | `pyhwp` 미설치 시 `.hwp` read_text 작업 실패 가능 |
+
+---
+
+### 12.2 핵심 문제 — `hwpx-xml.md`의 잘못된 포맷 기술
+
+`hwpx-xml.md`는 스킬 초기 개발 단계(Phase 3 이전)에 작성된 **HML 포맷**(`content.hml`, 2012 네임스페이스)을 기준으로 작성되어 있었다. 그러나 v2에서 실제 HWPX 포맷으로 스킬이 전환되었음에도 이 파일만 갱신되지 않아, `SKILL.md`와 완전히 상충하는 내용을 담고 있었다.
+
+**충돌 항목 3가지:**
+
+| 항목 | `hwpx-xml.md` (구버전, 오류) | `SKILL.md` (올바름) |
+|------|----------------------------|--------------------|
+| 네임스페이스 연도 | `2012` | `2011` |
+| 본문 파일 | `content.hml` | `section0.xml` |
+| 태그 케이스 | 대문자 `<hp:P>`, `<hp:T>`, `<hp:TABLE>` | 소문자 `<hp:p>`, `<hp:t>`, `<hp:tbl>` |
+
+이 상태가 지속됐다면 subagent가 XML 편집 작업 시 `hwpx-xml.md`의 잘못된 구조를 따라 손상된 파일을 생성하는 문제가 발생할 수 있었다.
+
+---
+
+### 12.3 검증 방법 — 공식 문서 + 실파일 역공학
+
+두 단계로 올바른 구조를 확인했다.
+
+**1단계: 공식 문서 확인**
+
+`https://tech.hancom.com/hwpxformat/` (한컴 기술 블로그)에서 확인:
+- 본문 파일: `section0.xml`, `section1.xml` (구역 수만큼)
+- 패키지 파일: `content.hpf`
+- 태그: `<hp:p>`, `<hp:run>`, `<hp:t>` (소문자 확인)
+- 스타일/폰트: `header.xml`
+
+**2단계: python-hwpx 생성 파일 직접 언팩 검증**
+
+```python
+from hwpx import HwpxDocument
+doc = HwpxDocument.new()
+doc.add_paragraph("테스트", style_id_ref=2)
+doc.save_to_path("/tmp/sample_test.hwpx")
+```
+
+→ `unpack.py`로 언팩 후 `section0.xml` 직접 열람:
+
+```xml
+<!-- 실제 확인된 section0.xml 루트 -->
+<hs:sec xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph"
+        xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section">
+
+  <!-- 첫 단락: hp:run 안에 hp:secPr, 텍스트용 hp:run은 별도 -->
+  <hp:p id="3121190098" paraPrIDRef="0" styleIDRef="0" ...>
+    <hp:run charPrIDRef="0">
+      <hp:secPr ...>
+        <hp:pagePr landscape="WIDELY" width="59528" height="84186" .../>
+      </hp:secPr>
+    </hp:run>
+    <hp:run charPrIDRef="0"><hp:t/></hp:run>
+  </hp:p>
+
+</hs:sec>
+```
+
+→ `header.xml` 스타일 태그 확인:
+```xml
+<hh:style id="0" name="바탕글"  engName="Normal"    .../>
+<hh:style id="1" name="본문"    engName="Body"      .../>
+<hh:style id="2" name="개요 1"  engName="Outline 1" .../>
+```
+
+→ **표 태그 확인**: `python-hwpx`의 `exporter.py` 소스 분석
+
+```python
+# exporter.py 핵심 코드
+def _is_table(el):
+    return el.tag == f"{_HP}tbl"   # hp:tbl (hp: namespace 사용)
+
+for tr in tbl.findall(f"{_HP}tr"):       # hp:tr
+    for tc in tr.findall(f"{_HP}tc"):    # hp:tc
+```
+
+→ **표도 `hp:` 네임스페이스** (`ht:` 네임스페이스 없음). 기존 `hwpx-xml.md`가 `<ht:TABLE>`, `<ht:ROW>`, `<ht:CELL>`로 기술한 것은 완전히 잘못됨.
+
+추가 검증으로 `<hp:tbl>` 블록을 직접 `section0.xml`에 삽입 후 팩 → `TextExtractor`로 셀 내용 추출 성공:
+
+```
+헤더1 / 헤더2 / 데이터1 / 데이터2  ← 정상 추출 확인 ✅
+```
+
+---
+
+### 12.4 수정 내역
+
+#### (1) `references/hwpx-xml.md` — 전면 재작성
+
+기존 파일은 HML 포맷(구형 비표준) 기준으로 작성된 내용이었으므로 완전히 새로 작성했다.
+
+**변경 전 → 변경 후:**
+
+| 항목 | 변경 전 | 변경 후 |
+|------|--------|--------|
+| 기준 파일 | `content.hml` | `section0.xml` + `header.xml` |
+| 네임스페이스 | `2012` | `2011` |
+| 루트 요소 | `<hml:HWPMLDocType>` | `<hs:sec>` |
+| 단락 태그 | `<hp:P>` | `<hp:p>` |
+| 실행 태그 | `<hp:RUN>` | `<hp:run>` |
+| 텍스트 태그 | `<hp:T>` | `<hp:t>` |
+| 표 태그 | `<ht:TABLE>`, `<ht:ROW>`, `<ht:CELL>` | `<hp:tbl>`, `<hp:tr>`, `<hp:tc>` |
+| 스타일 태그 | `<hml:CHARSHAPE>`, `<hml:STYLELIST>` | `<hh:charPr>`, `<hh:style>` |
+| `id` 속성 | 순차 정수 (0, 1, 2) | 큰 난수 정수 (예: `3121190098`) |
+| `<hp:secPr>` 위치 | `<hp:p>` 직접 자식 | `<hp:run>` 안에 위치 |
+
+**새로 추가된 내용:**
+- 목차 (8개 섹션)
+- header.xml 스타일 목록 대응표 (styleIDRef 0~4)
+- `<hp:tbl>` → `<hp:tr>` → `<hp:tc>` 전체 구조 + 속성 설명
+- 완성형 3열 2행 표 패턴 (복붙 바로 가능)
+- XML 특수문자 이스케이프 표
+- 단위 변환표 (HWP 단위 ↔ mm/pt)
+- 이미지(`hp:pic`) 삽입 구조
+
+#### (2) `SKILL.md` — 4곳 수정
+
+**① Subagent Setup에 pyhwp 설치 추가:**
+```
+# 변경 전
+2. pip install python-hwpx --break-system-packages -q
+3. Read SKILL.md ...
+
+# 변경 후
+2. pip install python-hwpx --break-system-packages -q
+3. pip install pyhwp --break-system-packages -q     ← 추가
+4. Read SKILL.md ...
+```
+
+**② Dispatch 테이블에 표 생성 케이스 추가:**
+```
+| 새 HWPX 생성 (표 포함) | create_hwpx_with_table | 새 .hwpx 생성 + 표 삽입 | — |
+```
+
+**③ 표 생성 절차 안내 섹션 신규 추가:**
+- `python-hwpx` 라이브러리가 표 직접 생성 미지원임을 명시
+- create → unpack → XML 삽입 → pack 4단계 절차 기술
+- `references/hwpx-xml.md`의 표 패턴 참조 안내
+
+**④ XML 핵심 규칙 갱신:**
+- `<hp:tbl>`, `<hp:tr>`, `<hp:tc>` 태그 추가
+- `<hp:secPr>` 위치를 `<hp:run>` 안으로 명확화
+- `id`를 "큰 난수 정수"로 수정
+- `ht:` 네임스페이스 사용 금지 명시
+
+#### (3) `evals/evals.json` — 1곳 수정
+
+```json
+// 변경 전
+"skill_name": "hwp"
+
+// 변경 후
+"skill_name": "hwpx"
+```
+
+---
+
+### 12.5 버그 목록 추가 (v3 신규)
+
+| # | 버그 | 원인 | 수정 |
+|---|------|------|------|
+| 15 | `hwpx-xml.md`가 HML 포맷 기술 — 실제 HWPX 편집 시 손상 파일 생성 위험 | v2 전환 시 참조 문서 미갱신. `content.hml`, 2012 ns, 대문자 태그, `<ht:TABLE>` 등 잘못된 정보 수록 | `hwpx-xml.md` 전면 재작성 (section0.xml, 2011 ns, 소문자, `hp:tbl/tr/tc`) |
+| 16 | `evals.json`의 `skill_name: "hwp"` — skill-creator eval 실행 시 스킬을 찾지 못함 | 초기 작성 오타 | `"hwpx"`로 수정 |
+| 17 | Subagent Setup에 pyhwp 미설치 — `.hwp` 파일 read_text 작업 시 실패 가능 | python-hwpx만 설치하도록 지시하고 pyhwp 누락 | Setup에 `pip install pyhwp` 추가 |
+
+---
+
+### 12.6 수정 후 최종 파일 상태
+
+| 파일 | 역할 | 상태 |
+|------|------|------|
+| `SKILL.md` | 트리거 + 워크플로 + Execution Model | ✅ pyhwp 설치, 표 생성 케이스, XML 규칙 갱신 (v3) |
+| `scripts/read_hwp.py` | .hwp/.hwpx 텍스트 추출 | ✅ (변경 없음) |
+| `scripts/create.py` | 새 .hwpx 생성 (python-hwpx 기반) | ✅ (변경 없음) |
+| `scripts/unpack.py` | .hwpx → 디렉토리 | ✅ (변경 없음) |
+| `scripts/pack.py` | 디렉토리 → .hwpx | ✅ (변경 없음) |
+| `scripts/soffice.py` | LibreOffice 변환 래퍼 | ✅ (변경 없음) |
+| `references/hwpx-xml.md` | HWPX XML 구조 참조 | ✅ **전면 재작성** — section0.xml 기반, 표 구조 추가 (v3) |
+| `evals/evals.json` | 테스트 케이스 | ✅ `skill_name` 오류 수정 (v3) |
+
+---
+
+### 12.7 향후 개선 사항 업데이트
+
+| 항목 | v2 현황 | v3 이후 상태 |
+|------|--------|-------------|
+| 표(TABLE) 생성 | 미구현 (알려진 한계) | **절차 문서화 완료** — unpack→XML 삽입→pack 방식으로 가능. `hwpx-xml.md`에 완성형 패턴 추가 |
+| `hwpx-xml.md` 정합성 | HML 기반 잘못된 정보 | **해결** — section0.xml 기반으로 전면 재작성 |
+| eval 실행 | `skill_name` 오류로 실행 불가 | **해결** — `"hwpx"`로 수정 |
+| Bold 텍스트 | python-hwpx 내부 버그로 불가 | 변동 없음 (upstream 버그) |
+| LibreOffice HWPX→PDF 변환 | HWPX 지원 미흡 | 변동 없음 |

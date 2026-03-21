@@ -1,228 +1,239 @@
-# HWPX XML 구조 참조
+# HWPX XML 구조 참조 (section0.xml 기반)
 
-HWPX는 한국 국가표준 KS X 6101 기반의 XML 문서 포맷이다.
-`content.hml`이 본문의 핵심 파일이다.
+HWPX는 KS X 6101 기반의 XML 문서 포맷이다.
+본문은 `Contents/section0.xml`, 스타일·폰트 정의는 `Contents/header.xml`에 있다.
+
+> **경고**: `content.hml`은 구형 비표준 파일이다. 편집·생성 대상 본문 파일은 반드시 `section0.xml`이다.
 
 ## 목차
 1. [네임스페이스](#네임스페이스)
-2. [content.hml 전체 구조](#contenthml-전체-구조)
-3. [HEAD 섹션 (스타일·폰트)](#head-섹션)
-4. [BODY 섹션 (본문)](#body-섹션)
-5. [단락(P) 구조](#단락p-구조)
-6. [표(TABLE) 구조](#표table-구조)
-7. [이미지(PICTURE) 구조](#이미지picture-구조)
-8. [주요 속성값 단위](#주요-속성값-단위)
+2. [section0.xml 전체 구조](#section0xml-전체-구조)
+3. [header.xml 구조 (스타일·폰트)](#headerxml-구조)
+4. [단락(p) 구조](#단락p-구조)
+5. [표(tbl) 구조](#표tbl-구조)
+6. [이미지(pic) 구조](#이미지pic-구조)
+7. [주요 속성값 단위](#주요-속성값-단위)
+8. [자주 쓰는 패턴](#자주-쓰는-패턴)
 
 ---
 
 ## 네임스페이스
 
+실제 python-hwpx 생성 파일 기준 (모두 **2011**, 태그 **소문자**):
+
 ```xml
-xmlns:hml="http://www.hancom.co.kr/hwpml/2012/core"
-xmlns:hp="http://www.hancom.co.kr/hwpml/2012/paragraph"
-xmlns:hs="http://www.hancom.co.kr/hwpml/2012/section"
-xmlns:hh="http://www.hancom.co.kr/hwpml/2012/head"
-xmlns:hf="http://www.hancom.co.kr/hwpml/2012/fill"
-xmlns:hr="http://www.hancom.co.kr/hwpml/2012/run"
-xmlns:ht="http://www.hancom.co.kr/hwpml/2012/table"
-xmlns:hpf="http://www.hancom.co.kr/hwpml/2012/picture"
-xmlns:ha="http://www.hancom.co.kr/hwpml/2012/app"
+<!-- section0.xml 루트 선언 -->
+xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph"
+xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section"
+
+<!-- header.xml 루트 선언 (주요 접두사) -->
+xmlns:hh="http://www.hancom.co.kr/hwpml/2011/head"
+xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph"
+xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section"
+xmlns:hc="http://www.hancom.co.kr/hwpml/2011/core"
 ```
+
+> **절대 금지**: `2012` 네임스페이스, 대문자 태그(`P/RUN/T/TABLE`) 사용 금지.
+> HML 포맷(`content.hml`, 2012 네임스페이스)과 혼동하지 않는다.
 
 ---
 
-## content.hml 전체 구조
+## section0.xml 전체 구조
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
-<hml:HWPMLDocType xmlns:hml="..." xmlns:hp="..." version="1.3.0.0">
-  <hml:HEAD>
-    <!-- 문서 속성, 스타일, 폰트, 단락모양 정의 -->
-  </hml:HEAD>
-  <hml:BODY>
-    <hml:SECTION>
-      <!-- 본문 단락들 -->
-    </hml:SECTION>
-  </hml:BODY>
-  <hml:TAIL>
-    <!-- 각주, 미주 등 (선택) -->
-  </hml:TAIL>
-</hml:HWPMLDocType>
+<hs:sec xmlns:hp="http://www.hancom.co.kr/hwpml/2011/paragraph"
+        xmlns:hs="http://www.hancom.co.kr/hwpml/2011/section">
+
+  <!-- 첫 번째 hp:p — hp:secPr 필수 (없으면 "파일 손상" 오류) -->
+  <hp:p id="3121190098" paraPrIDRef="0" styleIDRef="0"
+        pageBreak="0" columnBreak="0" merged="0">
+    <hp:run charPrIDRef="0">
+      <hp:secPr textDirection="HORIZONTAL" spaceColumns="1134"
+                tabStop="8000" outlineShapeIDRef="1" masterPageCnt="0">
+        <hp:pagePr landscape="WIDELY" width="59528" height="84186"
+                   gutterType="LEFT_ONLY">
+          <hp:margin header="4252" footer="4252" gutter="0"
+                     left="8504" right="8504" top="5668" bottom="4252"/>
+        </hp:pagePr>
+      </hp:secPr>
+    </hp:run>
+    <hp:run charPrIDRef="0">
+      <hp:t/>
+    </hp:run>
+  </hp:p>
+
+  <!-- 이후 본문 단락들 -->
+  <hp:p id="2380727813" paraPrIDRef="0" styleIDRef="2"
+        pageBreak="0" columnBreak="0" merged="0">
+    <hp:run charPrIDRef="0">
+      <hp:t>문서 제목</hp:t>
+    </hp:run>
+  </hp:p>
+
+</hs:sec>
+```
+
+### 핵심 규칙
+
+- **id 속성**: 큰 난수 정수 사용. 문서 내에서 유일해야 한다. 새 `<hp:p>` 추가 시 기존 최대값 +1 또는 임의 큰 수 사용.
+- **`<hp:secPr>`** 는 반드시 첫 번째 `<hp:p>`의 `<hp:run>` 안에 위치한다.
+- **`<hp:t>` 안에서 `\n` 사용 금지** — 새 줄은 새 `<hp:p>` 블록으로 표현.
+- **네임스페이스 선언 제거 금지** — `<hs:sec>` 루트의 xmlns 선언을 유지한다.
+
+---
+
+## header.xml 구조
+
+`header.xml`에는 `section0.xml`에서 IDRef로 참조하는 스타일·폰트가 정의된다.
+BODY만 편집할 때는 수정 불필요 (기존 IDRef 재사용).
+
+### 스타일 목록 (styleIDRef 대응표)
+
+```xml
+<hh:style id="0"  name="바탕글"  engName="Normal"    paraPrIDRef="0"  charPrIDRef="0"/>
+<hh:style id="1"  name="본문"    engName="Body"      paraPrIDRef="1"  charPrIDRef="0"/>
+<hh:style id="2"  name="개요 1"  engName="Outline 1" paraPrIDRef="2"  charPrIDRef="0"/>
+<hh:style id="3"  name="개요 2"  engName="Outline 2" paraPrIDRef="3"  charPrIDRef="0"/>
+<hh:style id="4"  name="개요 3"  engName="Outline 3" paraPrIDRef="4"  charPrIDRef="0"/>
+```
+
+`<hp:p styleIDRef="2">` → 개요 1(제목) 스타일 적용.
+
+### charPr (글자 모양)
+
+```xml
+<hh:charPr id="0" height="1000" textColor="#000000" ...>
+  <hh:fontRef hangul="1" latin="1" hanja="1" .../>
+  <!-- height: 1/100 pt 단위. 1000 = 10pt, 1200 = 12pt -->
+</hh:charPr>
+```
+
+### paraPr (단락 모양)
+
+```xml
+<hh:paraPr id="0" tabPrIDRef="0" condense="0" textDir="LTR">
+  <hh:align horizontal="JUSTIFY" vertical="BASELINE"/>
+</hh:paraPr>
 ```
 
 ---
 
-## HEAD 섹션
-
-HEAD에는 BODY에서 참조(IDRef)하는 스타일 정의가 있다.
-BODY를 편집할 때는 HEAD를 수정할 필요가 없다 (기존 IDRef 재사용).
-
-### CHARSHAPELIST (글자 모양)
-```xml
-<hml:CHARSHAPELIST>
-  <hml:CHARSHAPE id="0"
-    height="1000"     <!-- 글자 크기: 1/100 pt 단위 (1000 = 10pt) -->
-    bold="0"          <!-- 굵게: 0|1 -->
-    italic="0"        <!-- 기울임: 0|1 -->
-    underline="0"     <!-- 밑줄: 0|1 -->
-    strikeout="0">    <!-- 취소선: 0|1 -->
-    <hml:FONTID face="함초롬바탕" lang="ko"/>
-    <hml:FONTID face="Arial"      lang="en"/>
-  </hml:CHARSHAPE>
-</hml:CHARSHAPELIST>
-```
-
-### PARASHAPELIST (단락 모양)
-```xml
-<hml:PARASHAPELIST>
-  <hml:PARASHAPE id="0"
-    lineSpacing="160"           <!-- 줄 간격 (%) -->
-    lineSpacingType="percent"
-    spaceAbove="0"              <!-- 문단 위 여백 (1/100 mm) -->
-    spaceBelow="0"              <!-- 문단 아래 여백 -->
-    align="justify">            <!-- 정렬: left|center|right|justify -->
-  </hml:PARASHAPE>
-</hml:PARASHAPELIST>
-```
-
-### STYLELIST (스타일)
-```xml
-<hml:STYLELIST>
-  <hml:STYLE id="0" name="바탕글"
-    charPrIDRef="0"   <!-- CHARSHAPE id 참조 -->
-    paraPrIDRef="0"   <!-- PARASHAPE id 참조 -->
-    type="para"/>
-</hml:STYLELIST>
-```
-
----
-
-## BODY 섹션
+## 단락(p) 구조
 
 ```xml
-<hml:BODY>
-  <hml:SECTION>
-    <hml:SECDEF .../>   <!-- 섹션 속성 (페이지 크기, 여백 등) -->
-    <hp:P id="0" paraPrIDRef="0" styleIDRef="0">
-      <!-- 단락 내용 -->
-    </hp:P>
-    <hp:P id="1" ...>
-      <!-- 다음 단락 -->
-    </hp:P>
-  </hml:SECTION>
-</hml:BODY>
-```
-
-### SECDEF (섹션 속성)
-```xml
-<hml:SECDEF>
-  <hml:PAGEDEF
-    width="59528"      <!-- 페이지 너비: 1/100 mm (A4: 21000 → 59528 HWP 단위) -->
-    height="84188"     <!-- 페이지 높이 -->
-    landscape="0">     <!-- 가로: 1, 세로: 0 -->
-    <hml:PAGEMARGIN
-      top="5000" bottom="5000"
-      left="4200" right="4200"
-      header="1700" footer="1700" gutter="0"/>
-  </hml:PAGEDEF>
-</hml:SECDEF>
-```
-
-> **단위**: HWPX 길이 단위 = 1/7200 inch ≈ 1/100mm의 약 0.353배.
-> A4 기준: 너비 210mm → 59528 HWP 단위, 높이 297mm → 84188 HWP 단위.
-
----
-
-## 단락(P) 구조
-
-```xml
-<hp:P id="0"
-  paraPrIDRef="0"   <!-- HEAD의 PARASHAPE id 참조 -->
-  styleIDRef="0">   <!-- HEAD의 STYLE id 참조 -->
+<hp:p id="2380727813" paraPrIDRef="0" styleIDRef="0"
+      pageBreak="0" columnBreak="0" merged="0">
 
   <!-- RUN: 같은 글자 모양의 텍스트 묶음 -->
-  <hp:RUN charPrIDRef="0">   <!-- HEAD의 CHARSHAPE id 참조 -->
-    <hp:T>텍스트 내용</hp:T>
-  </hp:RUN>
+  <hp:run charPrIDRef="0">
+    <hp:t>텍스트 내용</hp:t>
+  </hp:run>
 
-  <!-- 여러 RUN: 같은 단락 내 다른 글자 모양 -->
-  <hp:RUN charPrIDRef="1">
-    <hp:T>굵은 텍스트</hp:T>
-  </hp:RUN>
+  <!-- 같은 단락 내 다른 글자 모양 -->
+  <hp:run charPrIDRef="1">
+    <hp:t>굵은 텍스트</hp:t>
+  </hp:run>
 
-</hp:P>
+</hp:p>
 ```
 
 ### 빈 단락 (빈 줄)
+
 ```xml
-<hp:P id="5" paraPrIDRef="0" styleIDRef="0"/>
+<hp:p id="2956786762" paraPrIDRef="0" styleIDRef="0"
+      pageBreak="0" columnBreak="0" merged="0">
+  <hp:run charPrIDRef="0"><hp:t/></hp:run>
+</hp:p>
 ```
 
-### 텍스트에서 주의할 점
-- `<hp:T>` 안에서 줄바꿈 금지 — 새 줄은 새 `<hp:P>` 블록으로
-- XML 특수문자 이스케이프 필수: `&` → `&amp;`, `<` → `&lt;`, `>` → `&gt;`
+### XML 특수문자 이스케이프
+
+| 원문자 | 이스케이프 |
+|--------|-----------|
+| `&` | `&amp;` |
+| `<` | `&lt;` |
+| `>` | `&gt;` |
 
 ---
 
-## 표(TABLE) 구조
+## 표(tbl) 구조
+
+표도 `hp:` 네임스페이스를 사용한다. `<hp:tbl>`은 `<hp:run>` 안에 위치한다.
 
 ```xml
-<hp:P id="10" paraPrIDRef="0" styleIDRef="0">
-  <hp:TABLE>
-    <ht:TABLE
-      id="0"
-      numberingType="caption"
-      rowCount="2"
-      colCount="3"
-      cellSpacing="0">
+<hp:p id="1000000001" paraPrIDRef="0" styleIDRef="0"
+      pageBreak="0" columnBreak="0" merged="0">
+  <hp:run charPrIDRef="0">
+    <hp:tbl id="1" colCount="3" rowCount="2"
+            cellSpacing="0" borderFillIDRef="1"
+            numMergedCell="0" zOrder="0"
+            numberingType="NONE" textWrap="SQUARE"
+            textFlow="BOTH_SIDES" lock="0">
 
-      <ht:ROW>
-        <ht:CELL
-          colAddr="0" rowAddr="0"
-          colSpan="1" rowSpan="1">
-          <hp:P id="11" paraPrIDRef="0" styleIDRef="0">
-            <hp:RUN charPrIDRef="0">
-              <hp:T>셀 내용</hp:T>
-            </hp:RUN>
-          </hp:P>
-        </ht:CELL>
-        <!-- 추가 셀들 -->
-      </ht:ROW>
+      <!-- 행 -->
+      <hp:tr>
+        <!-- 셀: colAddr/rowAddr는 0부터 시작 -->
+        <hp:tc name="" header="0" hasMargin="0" protect="0"
+               editable="0" dirty="0" borderFillIDRef="2">
+          <hp:tcPr colSpan="1" rowSpan="1"
+                   colAddr="0" rowAddr="0"
+                   width="14400" height="1000">
+            <hp:tcMar left="141" right="141" top="0" bottom="0"/>
+          </hp:tcPr>
+          <!-- 셀 내부는 일반 hp:p와 동일 -->
+          <hp:p id="1000000002" paraPrIDRef="0" styleIDRef="0"
+                pageBreak="0" columnBreak="0" merged="0">
+            <hp:run charPrIDRef="0">
+              <hp:t>셀 내용</hp:t>
+            </hp:run>
+          </hp:p>
+        </hp:tc>
+        <!-- 나머지 셀 ... -->
+      </hp:tr>
+      <!-- 나머지 행 ... -->
 
-      <!-- 추가 행들 -->
-    </ht:TABLE>
-  </hp:TABLE>
-</hp:P>
+    </hp:tbl>
+  </hp:run>
+</hp:p>
 ```
+
+### 표 태그 요약
+
+| 태그 | 역할 | 주요 속성 |
+|------|------|----------|
+| `<hp:tbl>` | 표 전체 | `colCount`, `rowCount`, `cellSpacing`, `borderFillIDRef` |
+| `<hp:tr>` | 행 | — |
+| `<hp:tc>` | 셀 | `borderFillIDRef` |
+| `<hp:tcPr>` | 셀 크기/위치 | `colAddr`, `rowAddr`, `colSpan`, `rowSpan`, `width`, `height` |
+| `<hp:tcMar>` | 셀 여백 | `left`, `right`, `top`, `bottom` (HWP 단위) |
+
+> `borderFillIDRef="1"` → 테두리 없음, `borderFillIDRef="2"` → 기본 채우기(셀 배경).
+> header.xml의 `<hh:borderFill>` id와 매칭된다.
 
 ---
 
-## 이미지(PICTURE) 구조
+## 이미지(pic) 구조
 
-이미지는 `Contents/BinData/` 폴더에 저장 후 content.hml에서 참조한다.
+이미지는 `Contents/BinData/` 폴더에 저장 후 section0.xml에서 참조한다.
 
 ```xml
-<hp:P id="20" paraPrIDRef="0" styleIDRef="0">
-  <hp:PICTURE>
-    <hpf:PICTURE
-      id="0"
-      binDataRef="0"   <!-- BinData id 참조 -->
-      width="14400"    <!-- 너비 (HWP 단위) -->
-      height="10800">  <!-- 높이 (HWP 단위) -->
-    </hpf:PICTURE>
-  </hp:PICTURE>
-</hp:P>
+<hp:p id="2000000001" paraPrIDRef="0" styleIDRef="0"
+      pageBreak="0" columnBreak="0" merged="0">
+  <hp:run charPrIDRef="0">
+    <hp:pic>
+      <!-- width/height: HWP 단위 (1/7200 inch) -->
+      <hp:shapeComponent id="0" zOrder="0" groupLevel="0"
+                         width="14400" height="10800">
+        <hp:image href="BinData/image001.png" binDataRef="0"
+                  type="link"/>
+      </hp:shapeComponent>
+    </hp:pic>
+  </hp:run>
+</hp:p>
 ```
 
-HEAD의 BINDATA 섹션에 파일 등록:
-```xml
-<hml:BINDATA>
-  <hml:BINITEM id="0"
-    type="file"
-    inStorage="1"
-    name="BinData/image001.png"/>
-</hml:BINDATA>
-```
+BinData 파일을 `Contents/BinData/image001.png`로 복사한 후 위 XML을 삽입한다.
 
 ---
 
@@ -231,40 +242,118 @@ HEAD의 BINDATA 섹션에 파일 등록:
 | 속성 | 단위 | 예시 |
 |------|------|------|
 | 글자 크기 (`height`) | 1/100 pt | `1000` = 10pt, `1200` = 12pt |
-| 길이 (여백, 너비 등) | HWP 단위 (1/7200 inch) | `14400` ≈ 2인치 |
-| 줄 간격 (`lineSpacing`) | % | `160` = 160% |
-| 단락 여백 (`spaceAbove/Below`) | 1/100 mm | `500` = 5mm |
+| 길이 (여백, 너비 등) | HWP 단위 (1/7200 inch ≈ 0.00353mm) | `14400` ≈ 50.8mm (2인치) |
+| 페이지 너비 A4 | HWP 단위 | `59528` (210mm) |
+| 페이지 높이 A4 | HWP 단위 | `84186` (297mm) |
+| 셀 기본 여백 | HWP 단위 | `141` ≈ 0.5mm |
 
 ---
 
 ## 자주 쓰는 패턴
 
-### 제목 단락 (굵게, 20pt)
-```xml
-<!-- HEAD에 추가 -->
-<hml:CHARSHAPE id="1" height="2000" bold="1" italic="0" underline="0" strikeout="0">
-  <hml:FONTID face="함초롬바탕" lang="ko"/>
-  <hml:FONTID face="Arial" lang="en"/>
-</hml:CHARSHAPE>
+### 본문 단락 (기본 스타일)
 
-<!-- BODY에서 사용 -->
-<hp:P id="0" paraPrIDRef="0" styleIDRef="0">
-  <hp:RUN charPrIDRef="1">
-    <hp:T>문서 제목</hp:T>
-  </hp:RUN>
-</hp:P>
+```xml
+<hp:p id="9999000001" paraPrIDRef="0" styleIDRef="0"
+      pageBreak="0" columnBreak="0" merged="0">
+  <hp:run charPrIDRef="0">
+    <hp:t>본문 내용입니다.</hp:t>
+  </hp:run>
+</hp:p>
 ```
 
-### 가운데 정렬 단락
-```xml
-<!-- HEAD에 추가 -->
-<hml:PARASHAPE id="1" lineSpacing="160" lineSpacingType="percent"
-               spaceAbove="0" spaceBelow="0" align="center"/>
+### 제목 단락 (개요 1, styleIDRef="2")
 
-<!-- BODY에서 사용 -->
-<hp:P id="5" paraPrIDRef="1" styleIDRef="0">
-  <hp:RUN charPrIDRef="0">
-    <hp:T>가운데 정렬 텍스트</hp:T>
-  </hp:RUN>
-</hp:P>
+```xml
+<hp:p id="9999000002" paraPrIDRef="0" styleIDRef="2"
+      pageBreak="0" columnBreak="0" merged="0">
+  <hp:run charPrIDRef="0">
+    <hp:t>1장 제목</hp:t>
+  </hp:run>
+</hp:p>
+```
+
+### 3열 2행 표 (헤더행 + 데이터행)
+
+```xml
+<hp:p id="9999000010" paraPrIDRef="0" styleIDRef="0"
+      pageBreak="0" columnBreak="0" merged="0">
+  <hp:run charPrIDRef="0">
+    <hp:tbl id="1" colCount="3" rowCount="2" cellSpacing="0"
+            borderFillIDRef="1" numMergedCell="0" zOrder="0"
+            numberingType="NONE" textWrap="SQUARE"
+            textFlow="BOTH_SIDES" lock="0">
+      <hp:tr>
+        <hp:tc name="" header="0" hasMargin="0" protect="0"
+               editable="0" dirty="0" borderFillIDRef="2">
+          <hp:tcPr colSpan="1" rowSpan="1" colAddr="0" rowAddr="0"
+                   width="14173" height="1000">
+            <hp:tcMar left="141" right="141" top="0" bottom="0"/>
+          </hp:tcPr>
+          <hp:p id="9999000011" paraPrIDRef="0" styleIDRef="0"
+                pageBreak="0" columnBreak="0" merged="0">
+            <hp:run charPrIDRef="0"><hp:t>제품명</hp:t></hp:run>
+          </hp:p>
+        </hp:tc>
+        <hp:tc name="" header="0" hasMargin="0" protect="0"
+               editable="0" dirty="0" borderFillIDRef="2">
+          <hp:tcPr colSpan="1" rowSpan="1" colAddr="1" rowAddr="0"
+                   width="14173" height="1000">
+            <hp:tcMar left="141" right="141" top="0" bottom="0"/>
+          </hp:tcPr>
+          <hp:p id="9999000012" paraPrIDRef="0" styleIDRef="0"
+                pageBreak="0" columnBreak="0" merged="0">
+            <hp:run charPrIDRef="0"><hp:t>수량</hp:t></hp:run>
+          </hp:p>
+        </hp:tc>
+        <hp:tc name="" header="0" hasMargin="0" protect="0"
+               editable="0" dirty="0" borderFillIDRef="2">
+          <hp:tcPr colSpan="1" rowSpan="1" colAddr="2" rowAddr="0"
+                   width="14174" height="1000">
+            <hp:tcMar left="141" right="141" top="0" bottom="0"/>
+          </hp:tcPr>
+          <hp:p id="9999000013" paraPrIDRef="0" styleIDRef="0"
+                pageBreak="0" columnBreak="0" merged="0">
+            <hp:run charPrIDRef="0"><hp:t>단가</hp:t></hp:run>
+          </hp:p>
+        </hp:tc>
+      </hp:tr>
+      <hp:tr>
+        <hp:tc name="" header="0" hasMargin="0" protect="0"
+               editable="0" dirty="0" borderFillIDRef="2">
+          <hp:tcPr colSpan="1" rowSpan="1" colAddr="0" rowAddr="1"
+                   width="14173" height="1000">
+            <hp:tcMar left="141" right="141" top="0" bottom="0"/>
+          </hp:tcPr>
+          <hp:p id="9999000014" paraPrIDRef="0" styleIDRef="0"
+                pageBreak="0" columnBreak="0" merged="0">
+            <hp:run charPrIDRef="0"><hp:t>사과</hp:t></hp:run>
+          </hp:p>
+        </hp:tc>
+        <hp:tc name="" header="0" hasMargin="0" protect="0"
+               editable="0" dirty="0" borderFillIDRef="2">
+          <hp:tcPr colSpan="1" rowSpan="1" colAddr="1" rowAddr="1"
+                   width="14173" height="1000">
+            <hp:tcMar left="141" right="141" top="0" bottom="0"/>
+          </hp:tcPr>
+          <hp:p id="9999000015" paraPrIDRef="0" styleIDRef="0"
+                pageBreak="0" columnBreak="0" merged="0">
+            <hp:run charPrIDRef="0"><hp:t>10</hp:t></hp:run>
+          </hp:p>
+        </hp:tc>
+        <hp:tc name="" header="0" hasMargin="0" protect="0"
+               editable="0" dirty="0" borderFillIDRef="2">
+          <hp:tcPr colSpan="1" rowSpan="1" colAddr="2" rowAddr="1"
+                   width="14174" height="1000">
+            <hp:tcMar left="141" right="141" top="0" bottom="0"/>
+          </hp:tcPr>
+          <hp:p id="9999000016" paraPrIDRef="0" styleIDRef="0"
+                pageBreak="0" columnBreak="0" merged="0">
+            <hp:run charPrIDRef="0"><hp:t>500</hp:t></hp:run>
+          </hp:p>
+        </hp:tc>
+      </hp:tr>
+    </hp:tbl>
+  </hp:run>
+</hp:p>
 ```
